@@ -1,3 +1,6 @@
+#include <ICM_20948.h>
+#include "math.h"
+
 
 #include "BLECStringCharacteristic.h"
 #include "EString.h"
@@ -12,6 +15,20 @@
 #define BLE_UUID_TX_FLOAT "27616294-3063-4ecc-b60b-3470ddef2938"
 #define BLE_UUID_TX_STRING "f235a225-6735-4d73-94cb-ee5dfce9ba83"
 //////////// BLE UUIDs ////////////
+
+//////////// ICM Sensor ////////////
+#define SERIAL_PORT Serial
+
+#define SPI_PORT SPI // Your desired SPI port.       Used only when "USE_SPI" is defined
+#define CS_PIN 2     // Which pin you connect CS to. Used only when "USE_SPI" is defined
+
+#define WIRE_PORT Wire // Your desired Wire port.      Used when "USE_SPI" is not defined
+// The value of the last bit of the I2C address.
+// On the SparkFun 9DoF IMU breakout the default is 1, and when the ADR jumper is closed the value becomes 0
+#define AD0_VAL 1
+
+ICM_20948_I2C myICM;
+//////////// ICM Sensor ////////////
 
 //////////// Global Variables ////////////
 BLEService testService(BLE_UUID_TEST_SERVICE);
@@ -32,12 +49,15 @@ long interval = 500;
 static long previousMillis = 0;
 unsigned long currentMillis = 0;
 
-const int BUFFER_LEN = 500;  
-unsigned long time_buffer[BUFFER_LEN];
-unsigned long temp_buffer[BUFFER_LEN];
-int buffer_count = 0;
+// Sample Buffer
+const int SAMPLE_LEN = 100;  
+unsigned long time_buffer[SAMPLE_LEN];
+unsigned long temp_buffer[SAMPLE_LEN];
+float accx_buffer[SAMPLE_LEN];
+float accy_buffer[SAMPLE_LEN];
+float accz_buffer[SAMPLE_LEN];
+int sample_count = 0;
 bool collecting = false;
-
 
 //////////// Global Variables ////////////
 
@@ -53,6 +73,7 @@ enum CommandTypes
     START_COLLECT_DATA,
     SEND_TIME_DATA,
     GET_TEMP_READINGS,
+    GET_ACCL_READINGS,
 };
 
 void
@@ -199,7 +220,7 @@ handle_command()
          *  Start collecting timestamps in the main loop 
          */
         case START_COLLECT_DATA:
-            buffer_count = 0;
+            sample_count = 0;
             collecting = true;
             break;
         
@@ -210,7 +231,7 @@ handle_command()
         case SEND_TIME_DATA:
             collecting = false;
 
-            for (int i = 0; i < time_count; i++) {
+            for (int i = 0; i < sample_count; i++) {
                 tx_estring_value.clear();
                 tx_estring_value.append("T: ");
                 tx_estring_value.append((int)time_buffer[i]);
@@ -220,22 +241,44 @@ handle_command()
             break;
 
         /*
-         *  Stop collecting temperature. Loops through temp_buffer and sends each data point as a 
-         *  string on the GATT characteristic BLE_UUID_TX_STRING
+         *  Stop collecting temperature. Loops through temp_buffer and sends each data point as 
+         *  a string on the GATT characteristic BLE_UUID_TX_STRING
          */
-        case SEND_TIME_DATA:
+        case GET_TEMP_READINGS:
             collecting = false;
 
-            for (int i = 0; i < time_count; i++) {
+            for (int i = 0; i < sample_count; i++) {
                 tx_estring_value.clear();
                 tx_estring_value.append("T: ");
                 tx_estring_value.append((int)time_buffer[i]);
-                tx_estring_value.append(":|C:")
-                tx_estring_value.append(temp_buffer[i]);
+                tx_estring_value.append("|F: ");
+                tx_estring_value.append((int)temp_buffer[i]);
                 tx_characteristic_string.writeValue(tx_estring_value.c_str());
                 delay(3);         
             }
             break;
+
+        /*
+         *  Stop collecting temperature. Loops through temp_buffer and sends each data point as 
+         *  a string on the GATT characteristic BLE_UUID_TX_STRING
+         */
+        case GET_ACCL_READINGS:
+            collecting = false;
+
+            for (int i = 0; i < sample_count; i++) {
+                float accx, accy, accz;
+                tx_estring_value.clear();
+                tx_estring_value.append("x: ");
+                tx_estring_value.append(accx_buffer[i]);
+                tx_estring_value.append("|y: ");
+                tx_estring_value.append(accy_buffer[i]);
+                tx_estring_value.append("|z: ");
+                tx_estring_value.append(accz_buffer[i]);
+                tx_characteristic_string.writeValue(tx_estring_value.c_str());
+                delay(3);         
+            }
+            break;
+
         
         /* 
          * The default case may not capture all types of invalid commands.
@@ -296,6 +339,31 @@ setup()
     Serial.println(BLE.address());
 
     BLE.advertise();
+
+
+    bool initialized = false;
+    while (!initialized){
+    
+        myICM.begin(WIRE_PORT, AD0_VAL);
+        
+        SERIAL_PORT.print(F("Initialization of the sensor returned: "));
+        SERIAL_PORT.println(myICM.statusString());
+        if (myICM.status != ICM_20948_Stat_Ok)
+        {
+          SERIAL_PORT.println("Trying again...");
+          delay(500);
+        }
+        else
+        {
+            initialized = true;
+            for (int i=0; i<=2;i++){
+                digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
+                delay(500);                      // wait for a second
+                digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
+                delay(500);
+            }
+        }
+    }
 }
 
 void
@@ -344,10 +412,16 @@ loop()
             // Read data
             read_data();
 
-            if (collecting && time_count < BUFFER_LEN) {
-                time_buffer[buffer_count] = millis();
-                temp_buffer[buffer_count] = read_temperature_c();
-                buffer_count++;
+            if (collecting && sample_count < SAMPLE_LEN) {
+                time_buffer[sample_count] = millis();
+                temp_buffer[sample_count] = getTempDegF();
+                if (myICM.dataReady()){
+                    myICM.getAGMT();
+                    accx_buffer[sample_count] = myICM.accX();
+                    accy_buffer[sample_count] = myICM.accY();
+                    accz_buffer[sample_count] = myICM.accZ();
+                }
+                sample_count++;
             }
         }
 

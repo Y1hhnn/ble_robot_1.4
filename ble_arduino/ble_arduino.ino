@@ -1,4 +1,5 @@
 #include <ICM_20948.h>
+#include "math.h"
 
 
 #include "BLECStringCharacteristic.h"
@@ -14,6 +15,20 @@
 #define BLE_UUID_TX_FLOAT "27616294-3063-4ecc-b60b-3470ddef2938"
 #define BLE_UUID_TX_STRING "f235a225-6735-4d73-94cb-ee5dfce9ba83"
 //////////// BLE UUIDs ////////////
+
+//////////// ICM Sensor ////////////
+#define SERIAL_PORT Serial
+
+#define SPI_PORT SPI // Your desired SPI port.       Used only when "USE_SPI" is defined
+#define CS_PIN 2     // Which pin you connect CS to. Used only when "USE_SPI" is defined
+
+#define WIRE_PORT Wire // Your desired Wire port.      Used when "USE_SPI" is not defined
+// The value of the last bit of the I2C address.
+// On the SparkFun 9DoF IMU breakout the default is 1, and when the ADR jumper is closed the value becomes 0
+#define AD0_VAL 1
+
+ICM_20948_I2C myICM;
+//////////// ICM Sensor ////////////
 
 //////////// Global Variables ////////////
 BLEService testService(BLE_UUID_TEST_SERVICE);
@@ -34,12 +49,44 @@ long interval = 500;
 static long previousMillis = 0;
 unsigned long currentMillis = 0;
 
-const int SAMPLE_LEN = 500;  
+unsigned long loop_count = 0;
+
+// Sample Buffer
+const int SAMPLE_LEN = 3000;  
+const int SAMPLE_INTERVAL = 3000; // in microseconds
+unsigned long last_sample_time = 0;
 unsigned long time_buffer[SAMPLE_LEN];
 unsigned long temp_buffer[SAMPLE_LEN];
+
+// IMU Buffers
+float raw_acc_x[SAMPLE_LEN];
+float raw_acc_y[SAMPLE_LEN];
+float raw_acc_z[SAMPLE_LEN];
+// float gyro_x[SAMPLE_LEN];
+// float gyro_y[SAMPLE_LEN];
+// float gyro_z[SAMPLE_LEN];
+
+float raw_acc_roll[SAMPLE_LEN];
+float raw_acc_pitch[SAMPLE_LEN];
+
+float gyr_roll[SAMPLE_LEN];
+float gyr_pitch[SAMPLE_LEN];
+float gyr_yaw[SAMPLE_LEN];
+
 int sample_count = 0;
 bool collecting = false;
 
+// Lower-Pass Filter
+const float alpha = 0.15; 
+// float filt_acc_x[SAMPLE_LEN];
+// float filt_acc_y[SAMPLE_LEN];
+// float filt_acc_z[SAMPLE_LEN];
+
+float filt_acc_roll[SAMPLE_LEN];
+float filt_acc_pitch[SAMPLE_LEN];
+
+float comp_roll[SAMPLE_LEN];
+float comp_pitch[SAMPLE_LEN];
 
 //////////// Global Variables ////////////
 
@@ -55,6 +102,9 @@ enum CommandTypes
     START_COLLECT_DATA,
     SEND_TIME_DATA,
     GET_TEMP_READINGS,
+    GET_ACCL_READINGS,
+    GET_GYRO_READINGS,
+    GET_COMP_READINGS
 };
 
 void
@@ -202,7 +252,10 @@ handle_command()
          */
         case START_COLLECT_DATA:
             sample_count = 0;
+            loop_count = 0;
             collecting = true;
+            last_sample_time = micros();
+            digitalWrite(LED_BUILTIN, HIGH); 
             break;
         
         /*
@@ -211,31 +264,121 @@ handle_command()
          */
         case SEND_TIME_DATA:
             collecting = false;
+            digitalWrite(LED_BUILTIN, LOW);
 
             for (int i = 0; i < sample_count; i++) {
                 tx_estring_value.clear();
                 tx_estring_value.append("T: ");
                 tx_estring_value.append((int)time_buffer[i]);
                 tx_characteristic_string.writeValue(tx_estring_value.c_str());
-                delay(3);         
+            }
+
+            SERIAL_PORT.print("Loop Count: ");
+            SERIAL_PORT.println(loop_count);
+            SERIAL_PORT.print(" | Sample Count: ");
+            SERIAL_PORT.println(sample_count);
+            break;
+
+        /*
+         *  Stop collecting temperature. Loops through temp_buffer and sends each data point as 
+         *  a string on the GATT characteristic BLE_UUID_TX_STRING
+         */
+        case GET_TEMP_READINGS:
+            collecting = false;
+            digitalWrite(LED_BUILTIN, LOW);
+
+            for (int i = 0; i < sample_count; i++) {
+                tx_estring_value.clear();
+                tx_estring_value.append("T: ");
+                tx_estring_value.append((int)time_buffer[i]);
+                tx_estring_value.append("|F: ");
+                tx_estring_value.append((int)temp_buffer[i]);
+                tx_characteristic_string.writeValue(tx_estring_value.c_str());
             }
             break;
 
         /*
-         *  Stop collecting temperature. Loops through temp_buffer and sends each data point as a 
-         *  string on the GATT characteristic BLE_UUID_TX_STRING
+         *  Stop collecting accelerometer data. Loops through accx, accy and accz buffers (both raw and LPF ones)
+         *   and sends each data point as a string on the GATT characteristic BLE_UUID_TX_STRING.
          */
-        case GET_TEMP_READINGS:
+        case GET_ACCL_READINGS:
             collecting = false;
+            digitalWrite(LED_BUILTIN, LOW);
 
             for (int i = 0; i < sample_count; i++) {
                 tx_estring_value.clear();
                 tx_estring_value.append("T: ");
                 tx_estring_value.append((int)time_buffer[i]);
-                tx_estring_value.append("|F:");
-                tx_estring_value.append((int)temp_buffer[i]);
+                tx_estring_value.append("|x: ");
+                tx_estring_value.append(raw_acc_x[i]);
+                tx_estring_value.append("|y: ");
+                tx_estring_value.append(raw_acc_y[i]);
+                tx_estring_value.append("|z: ");
+                tx_estring_value.append(raw_acc_z[i]);
+                tx_estring_value.append("|p: ");
+                tx_estring_value.append(raw_acc_pitch[i]);
+                tx_estring_value.append("|r: ");
+                tx_estring_value.append(raw_acc_roll[i]);
+                tx_estring_value.append("|fp: ");
+                tx_estring_value.append(filt_acc_pitch[i]);
+                tx_estring_value.append("|fr: ");
+                tx_estring_value.append(filt_acc_roll[i]);
                 tx_characteristic_string.writeValue(tx_estring_value.c_str());
-                delay(3);         
+            }
+
+            SERIAL_PORT.print("Loop Count: ");
+            SERIAL_PORT.println(loop_count);
+            SERIAL_PORT.print(" | Sample Count: ");
+            SERIAL_PORT.print(sample_count);
+            break;
+        
+        /*
+         *  Stop collecting gyroscope data. Loops through gyrox, gyroy and gyroz buffers and 
+         *  sends each data point as a string on the GATT characteristic BLE_UUID_TX_STRING.
+         */
+        case GET_GYRO_READINGS:
+            collecting = false;
+            digitalWrite(LED_BUILTIN, LOW);
+
+            for (int i = 0; i < sample_count; i++) {
+
+                tx_estring_value.clear();
+                tx_estring_value.append("T: ");
+                tx_estring_value.append((int)time_buffer[i]);
+                // tx_estring_value.append("|x: ");
+                // tx_estring_value.append(gyro_x[i]);
+                // tx_estring_value.append("|y: ");
+                // tx_estring_value.append(gyro_y[i]);
+                // tx_estring_value.append("|z: ");
+                // tx_estring_value.append(gyro_z[i]);
+                tx_estring_value.append("|r: ");
+                tx_estring_value.append(gyr_roll[i]);
+                tx_estring_value.append("|p: ");
+                tx_estring_value.append(gyr_pitch[i]);
+                tx_estring_value.append("|y: ");
+                tx_estring_value.append(gyr_yaw[i]); 
+                tx_characteristic_string.writeValue(tx_estring_value.c_str());
+            }
+            break;
+        
+        /*
+         *  Stop collecting complementary filter data. Loops through compl_roll and comp_pitch buffers and 
+         *  sends each data point as a string on the GATT characteristic BLE_UUID_TX_STRING.
+        */
+        case GET_COMP_READINGS:
+            collecting = false;
+            digitalWrite(LED_BUILTIN, LOW);
+
+            for (int i = 0; i < sample_count; i++) {
+
+                tx_estring_value.clear();
+                tx_estring_value.append("T: ");
+                tx_estring_value.append((int)time_buffer[i]);
+                tx_estring_value.append("|r: ");
+                tx_estring_value.append(comp_roll[i]);
+                tx_estring_value.append("|p: ");
+                tx_estring_value.append(comp_pitch[i]);
+                tx_characteristic_string.writeValue(tx_estring_value.c_str());
             }
             break;
         
@@ -298,6 +441,38 @@ setup()
     Serial.println(BLE.address());
 
     BLE.advertise();
+
+    // ICM Sensor Initialization
+    while (!SERIAL_PORT){
+        ; // wait for serial port to connect. Needed for native USB
+    }
+
+    WIRE_PORT.begin();
+    WIRE_PORT.setClock(400000);
+
+    bool initialized = false;
+    while (!initialized){
+    
+        myICM.begin(WIRE_PORT, AD0_VAL);
+        
+        SERIAL_PORT.print(F("Initialization of the sensor returned: "));
+        SERIAL_PORT.println(myICM.statusString());
+        if (myICM.status != ICM_20948_Stat_Ok)
+        {
+          SERIAL_PORT.println("Trying again...");
+          delay(500);
+        }
+        else
+        {
+            initialized = true;
+            for (int i=0; i<=2;i++){
+                digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
+                delay(500);                      // wait for a second
+                digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
+                delay(500);
+            }
+        }
+    }
 }
 
 void
@@ -347,9 +522,65 @@ loop()
             read_data();
 
             if (collecting && sample_count < SAMPLE_LEN) {
-                time_buffer[sample_count] = millis();
-                temp_buffer[sample_count] = getTempDegF();
-                sample_count++;
+                unsigned long current_sample_time = micros();
+                loop_count++;
+
+                if (current_sample_time - last_sample_time >= SAMPLE_INTERVAL) {
+                    if (myICM.dataReady()){
+                        unsigned long current_sample_time = micros();
+                        float dt = (current_sample_time - last_sample_time)/1.e6; 
+                        time_buffer[sample_count] = millis();
+                        temp_buffer[sample_count] = getTempDegF();
+
+                        myICM.getAGMT();
+
+                        raw_acc_x[sample_count] = myICM.accX();
+                        raw_acc_y[sample_count] = myICM.accY();
+                        raw_acc_z[sample_count] = myICM.accZ();
+
+                        // gyro_x[sample_count] = myICM.gyrX();
+                        // gyro_y[sample_count] = myICM.gyrY();
+                        // gyro_z[sample_count] = myICM.gyrZ();
+                        raw_acc_roll[sample_count] = atan2(myICM.accY(), myICM.accZ()) * 180.0 / M_PI;
+                        raw_acc_pitch[sample_count] = atan2(myICM.accX(), myICM.accZ())* 180.0 / M_PI;
+
+                        if (sample_count == 0){
+                            // filt_acc_x[sample_count] = raw_acc_x[sample_count];
+                            // filt_acc_y[sample_count] = raw_acc_y[sample_count];
+                            // filt_acc_z[sample_count] = raw_acc_z[sample_count];
+
+                            filt_acc_roll[sample_count] = raw_acc_roll[sample_count];
+                            filt_acc_pitch[sample_count] = raw_acc_pitch[sample_count];
+
+                            gyr_roll[sample_count] = myICM.gyrX()*dt;
+                            gyr_pitch[sample_count] = - myICM.gyrY()*dt;
+                            gyr_yaw[sample_count] = myICM.gyrZ()*dt;
+
+                            comp_roll[sample_count] = filt_acc_roll[sample_count]*alpha + gyr_roll[sample_count]*(1-alpha);
+                            comp_pitch[sample_count] = filt_acc_pitch[sample_count]*alpha + gyr_pitch[sample_count]*(1-alpha);
+
+                        }
+                        else {
+                            // filt_acc_x[sample_count] = alpha * raw_acc_x[sample_count] + (1 - alpha) * filt_acc_x[sample_count-1];
+                            // filt_acc_y[sample_count] = alpha * raw_acc_y[sample_count] + (1 - alpha) * filt_acc_y[sample_count-1];
+                            // filt_acc_z[sample_count] = alpha * raw_acc_z[sample_count] + (1 - alpha) * filt_acc_z[sample_count-1];
+
+                            filt_acc_roll[sample_count] = alpha * raw_acc_roll[sample_count] + (1 - alpha) * filt_acc_roll[sample_count-1];
+                            filt_acc_pitch[sample_count] = alpha * raw_acc_pitch[sample_count] + (1 - alpha) * filt_acc_pitch[sample_count-1];
+
+                            gyr_roll[sample_count] = myICM.gyrX()*dt + gyr_roll[sample_count-1];
+                            gyr_pitch[sample_count] = - myICM.gyrY()*dt - gyr_pitch[sample_count-1];
+                            gyr_yaw[sample_count] = myICM.gyrZ()*dt + gyr_yaw[sample_count-1];
+
+                            comp_roll[sample_count] = filt_acc_roll[sample_count]*alpha + (1-alpha)*(comp_roll[sample_count-1] + myICM.gyrX()*dt);
+                            comp_pitch[sample_count] = filt_acc_pitch[sample_count]*alpha + (1-alpha)*(comp_pitch[sample_count-1] + myICM.gyrY()*dt);
+                        }
+
+                        sample_count++;
+                        last_sample_time = current_sample_time;
+                    }
+                }
+
             }
         }
 

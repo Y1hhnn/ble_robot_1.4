@@ -1,6 +1,7 @@
+#include <SparkFun_VL53L1X.h>
 #include <ICM_20948.h>
 #include "math.h"
-
+#include <Wire.h>
 
 #include "BLECStringCharacteristic.h"
 #include "EString.h"
@@ -30,6 +31,13 @@
 ICM_20948_I2C myICM;
 //////////// ICM Sensor ////////////
 
+//////////// TOF Sensor ////////////
+#define XSHUT_PIN A3    //// XSHUT pin for the second sensor
+
+SFEVL53L1X distanceSensor1;
+SFEVL53L1X distanceSensor2;
+//////////// TOF Sensor ////////////
+
 //////////// Global Variables ////////////
 BLEService testService(BLE_UUID_TEST_SERVICE);
 
@@ -53,10 +61,14 @@ unsigned long loop_count = 0;
 
 // Sample Buffer
 const int SAMPLE_LEN = 3000;  
-const int SAMPLE_INTERVAL = 3000; // in microseconds
+const int SAMPLE_INTERVAL = 1000; // in microseconds
 unsigned long last_sample_time = 0;
 unsigned long time_buffer[SAMPLE_LEN];
 unsigned long temp_buffer[SAMPLE_LEN];
+
+//ToF Sensor Buffer
+int distance_buffer1[SAMPLE_LEN];
+int distance_buffer2[SAMPLE_LEN];
 
 // IMU Buffers
 float raw_acc_x[SAMPLE_LEN];
@@ -104,7 +116,8 @@ enum CommandTypes
     GET_TEMP_READINGS,
     GET_ACCL_READINGS,
     GET_GYRO_READINGS,
-    GET_COMP_READINGS
+    GET_COMP_READINGS,
+    GET_TOF_READINGS
 };
 
 void
@@ -256,6 +269,8 @@ handle_command()
             collecting = true;
             last_sample_time = micros();
             digitalWrite(LED_BUILTIN, HIGH); 
+            distanceSensor1.startRanging(); 
+            distanceSensor2.startRanging();
             break;
         
         /*
@@ -381,6 +396,34 @@ handle_command()
                 tx_characteristic_string.writeValue(tx_estring_value.c_str());
             }
             break;
+
+        /* 
+         *  Stop collecting ToF readings. Loops through distance_buffer and sends each data point as a 
+         *  string on the GATT characteristic BLE_UUID_TX_STRING.
+         */
+        case GET_TOF_READINGS:
+            collecting = false;
+            digitalWrite(LED_BUILTIN, LOW);
+            distanceSensor1.stopRanging();
+            distanceSensor2.stopRanging();
+
+            for (int i = 0; i < sample_count; i++) {
+                tx_estring_value.clear();
+                tx_estring_value.append("T: ");
+                tx_estring_value.append((int)time_buffer[i]);
+                tx_estring_value.append("|D1: ");
+                tx_estring_value.append(distance_buffer1[i]);
+                tx_estring_value.append("|D2: ");
+                tx_estring_value.append(distance_buffer2[i]);
+                tx_characteristic_string.writeValue(tx_estring_value.c_str());
+            }
+
+            SERIAL_PORT.print("Loop Count: ");
+            SERIAL_PORT.println(loop_count);
+            SERIAL_PORT.print(" | Sample Count: ");
+            SERIAL_PORT.print(sample_count);
+            break;
+        
         
         /* 
          * The default case may not capture all types of invalid commands.
@@ -465,14 +508,48 @@ setup()
         else
         {
             initialized = true;
-            for (int i=0; i<=2;i++){
-                digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
-                delay(500);                      // wait for a second
-                digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
-                delay(500);
-            }
+            // for (int i=0; i<=2;i++){
+            //     digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
+            //     delay(500);                      // wait for a second
+            //     digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
+            //     delay(500);
+            // }
         }
     }
+
+    // TOF Sensor Initialization
+    SERIAL_PORT.println("VL53L1X Qwiic Test");
+
+    // Turn off Sensor 2 to prevent I2C address conflicts
+    pinMode(XSHUT_PIN, OUTPUT);
+    digitalWrite(XSHUT_PIN, LOW); 
+    delay(10);
+
+    // Initialize Sensor 1
+    while (distanceSensor1.begin(WIRE_PORT) != 0) 
+    {
+        SERIAL_PORT.println("ToF Sensor 1 failed to begin. Retrying in 500ms...");
+        delay(500); 
+    }
+
+    // Change Sensor 1's I2C address (Default is 0x29, we change it to 0x2A)
+    distanceSensor1.setI2CAddress(0x2A<<1);
+
+    // Turn on Sensor 2
+    digitalWrite(XSHUT_PIN, HIGH);
+    delay(10);
+
+    // Initialize Sensor 2 
+    while (distanceSensor2.begin(WIRE_PORT) != 0) 
+    {
+        SERIAL_PORT.println("ToF Sensor 2 failed to begin. Retrying in 500ms...");
+        delay(500); 
+    }
+    
+    distanceSensor1.setDistanceModeLong(); 
+    distanceSensor2.setDistanceModeLong();
+
+    SERIAL_PORT.println("Both ToF Sensors online!");
 }
 
 void
@@ -525,62 +602,58 @@ loop()
                 unsigned long current_sample_time = micros();
                 loop_count++;
 
-                if (current_sample_time - last_sample_time >= SAMPLE_INTERVAL) {
-                    if (myICM.dataReady()){
-                        unsigned long current_sample_time = micros();
-                        float dt = (current_sample_time - last_sample_time)/1.e6; 
-                        time_buffer[sample_count] = millis();
-                        temp_buffer[sample_count] = getTempDegF();
+                 if (myICM.dataReady() && distanceSensor1.checkForDataReady() && distanceSensor2.checkForDataReady()){
+                    int current_dist1 = distanceSensor1.getDistance();
+                    distanceSensor1.clearInterrupt(); 
+                    
+                    int current_dist2 = distanceSensor2.getDistance();
+                    distanceSensor2.clearInterrupt(); 
+                    
+                    time_buffer[sample_count] = millis();
+                    distance_buffer1[sample_count] = current_dist1;
+                    distance_buffer2[sample_count] = current_dist2;
 
-                        myICM.getAGMT();
+                    sample_count++;
+                    last_sample_time = current_sample_time;
 
-                        raw_acc_x[sample_count] = myICM.accX();
-                        raw_acc_y[sample_count] = myICM.accY();
-                        raw_acc_z[sample_count] = myICM.accZ();
+                    unsigned long current_sample_time = micros();
+                    float dt = (current_sample_time - last_sample_time)/1.e6; 
+                    myICM.getAGMT();
 
-                        // gyro_x[sample_count] = myICM.gyrX();
-                        // gyro_y[sample_count] = myICM.gyrY();
-                        // gyro_z[sample_count] = myICM.gyrZ();
-                        raw_acc_roll[sample_count] = atan2(myICM.accY(), myICM.accZ()) * 180.0 / M_PI;
-                        raw_acc_pitch[sample_count] = atan2(myICM.accX(), myICM.accZ())* 180.0 / M_PI;
+                    raw_acc_x[sample_count] = myICM.accX();
+                    raw_acc_y[sample_count] = myICM.accY();
+                    raw_acc_z[sample_count] = myICM.accZ();
 
-                        if (sample_count == 0){
-                            // filt_acc_x[sample_count] = raw_acc_x[sample_count];
-                            // filt_acc_y[sample_count] = raw_acc_y[sample_count];
-                            // filt_acc_z[sample_count] = raw_acc_z[sample_count];
+                    raw_acc_roll[sample_count] = atan2(myICM.accY(), myICM.accZ()) * 180.0 / M_PI;
+                    raw_acc_pitch[sample_count] = atan2(myICM.accX(), myICM.accZ())* 180.0 / M_PI;
 
-                            filt_acc_roll[sample_count] = raw_acc_roll[sample_count];
-                            filt_acc_pitch[sample_count] = raw_acc_pitch[sample_count];
+                    if (sample_count == 0){
+                        filt_acc_roll[sample_count] = raw_acc_roll[sample_count];
+                        filt_acc_pitch[sample_count] = raw_acc_pitch[sample_count];
 
-                            gyr_roll[sample_count] = myICM.gyrX()*dt;
-                            gyr_pitch[sample_count] = - myICM.gyrY()*dt;
-                            gyr_yaw[sample_count] = myICM.gyrZ()*dt;
+                        gyr_roll[sample_count] = myICM.gyrX()*dt;
+                        gyr_pitch[sample_count] = - myICM.gyrY()*dt;
+                        gyr_yaw[sample_count] = myICM.gyrZ()*dt;
 
-                            comp_roll[sample_count] = filt_acc_roll[sample_count]*alpha + gyr_roll[sample_count]*(1-alpha);
-                            comp_pitch[sample_count] = filt_acc_pitch[sample_count]*alpha + gyr_pitch[sample_count]*(1-alpha);
+                        comp_roll[sample_count] = filt_acc_roll[sample_count]*alpha + gyr_roll[sample_count]*(1-alpha);
+                        comp_pitch[sample_count] = filt_acc_pitch[sample_count]*alpha + gyr_pitch[sample_count]*(1-alpha);
 
-                        }
-                        else {
-                            // filt_acc_x[sample_count] = alpha * raw_acc_x[sample_count] + (1 - alpha) * filt_acc_x[sample_count-1];
-                            // filt_acc_y[sample_count] = alpha * raw_acc_y[sample_count] + (1 - alpha) * filt_acc_y[sample_count-1];
-                            // filt_acc_z[sample_count] = alpha * raw_acc_z[sample_count] + (1 - alpha) * filt_acc_z[sample_count-1];
-
-                            filt_acc_roll[sample_count] = alpha * raw_acc_roll[sample_count] + (1 - alpha) * filt_acc_roll[sample_count-1];
-                            filt_acc_pitch[sample_count] = alpha * raw_acc_pitch[sample_count] + (1 - alpha) * filt_acc_pitch[sample_count-1];
-
-                            gyr_roll[sample_count] = myICM.gyrX()*dt + gyr_roll[sample_count-1];
-                            gyr_pitch[sample_count] = - myICM.gyrY()*dt - gyr_pitch[sample_count-1];
-                            gyr_yaw[sample_count] = myICM.gyrZ()*dt + gyr_yaw[sample_count-1];
-
-                            comp_roll[sample_count] = filt_acc_roll[sample_count]*alpha + (1-alpha)*(comp_roll[sample_count-1] + myICM.gyrX()*dt);
-                            comp_pitch[sample_count] = filt_acc_pitch[sample_count]*alpha + (1-alpha)*(comp_pitch[sample_count-1] + myICM.gyrY()*dt);
-                        }
-
-                        sample_count++;
-                        last_sample_time = current_sample_time;
                     }
-                }
+                    else {
+                        filt_acc_roll[sample_count] = alpha * raw_acc_roll[sample_count] + (1 - alpha) * filt_acc_roll[sample_count-1];
+                        filt_acc_pitch[sample_count] = alpha * raw_acc_pitch[sample_count] + (1 - alpha) * filt_acc_pitch[sample_count-1];
 
+                        gyr_roll[sample_count] = myICM.gyrX()*dt + gyr_roll[sample_count-1];
+                        gyr_pitch[sample_count] = - myICM.gyrY()*dt - gyr_pitch[sample_count-1];
+                        gyr_yaw[sample_count] = myICM.gyrZ()*dt + gyr_yaw[sample_count-1];
+
+                        comp_roll[sample_count] = filt_acc_roll[sample_count]*alpha + (1-alpha)*(comp_roll[sample_count-1] + myICM.gyrX()*dt);
+                        comp_pitch[sample_count] = filt_acc_pitch[sample_count]*alpha + (1-alpha)*(comp_pitch[sample_count-1] + myICM.gyrY()*dt);
+                    
+                    }
+
+                 }
+                    
             }
         }
 

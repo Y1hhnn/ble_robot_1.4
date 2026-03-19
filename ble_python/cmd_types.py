@@ -2,16 +2,10 @@ from enum import Enum
 
 class CMD(Enum):
     PING = 0
-    SEND_TWO_INTS = 1
-    SEND_THREE_FLOATS = 2
-    ECHO = 3
-    DANCE = 4
-    SET_VEL = 5
-    GET_TIME_MILLIS = 6
-    START_COLLECT_DATA = 7
-    SEND_TIME_DATA = 8
-    GET_TEMP_READINGS = 9
-    GET_ACCL_READINGS = 10
-    GET_GYRO_READINGS = 11
-    GET_COMP_READINGS = 12
-    GET_TOF_READINGS = 13
+    START_RECORD = 1
+    STOP_ROBOT = 2
+    SEND_LOG = 3
+    UPDATE_PID = 4
+    SET_DURATION = 5
+    SET_SETPOINT = 6
+    SET_MODE = 7

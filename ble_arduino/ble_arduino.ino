@@ -43,15 +43,21 @@ SFEVL53L1X distanceSensor2;
 #define RIGHT_MOTOR_IN1 7
 #define RIGHT_MOTOR_IN2 6
 
+int MAX_MOTOR_PCT = 100;
+
 // --- Calibration Constants ---
-const int FWD_LEFT_MIN = 40;
-const int FWD_LEFT_MAX = 212;
-const int FWD_RIGHT_MIN = 50;
+const int FWD_LEFT_MIN = 29;
+const int FWD_LEFT_MED = 99;
+const int FWD_LEFT_MAX = 255;
+const int FWD_RIGHT_MIN = 42;
+const int FWD_RIGHT_MED = 148;
 const int FWD_RIGHT_MAX = 255;
-const int REV_LEFT_MIN = 48;
-const int REV_LEFT_MAX = 210;
-const int REV_RIGHT_MIN = 200;
-const int REV_RIGHT_MAX = 255;
+const int BWD_LEFT_MIN = 34;
+const int BWD_LEFT_MED = 112;
+const int BWD_LEFT_MAX = 255;
+const int BWD_RIGHT_MIN = 46;
+const int BWD_RIGHT_MED = 150;
+const int BWD_RIGHT_MAX = 255;
 //////////// Motors ////////////
 
 //////////// Global Variables ////////////
@@ -77,13 +83,18 @@ unsigned long last_imu_time = 0; // in microseconds
 // float last_gyr_roll, last_gyr_pitch;
 // float last_comp_roll, last_comp_pitch;
 // float comp_roll, comp_pitch;
-float gyr_yaw, gyr_bias_z;
+float acc_x, acc_y;
+float gyr_z, gyr_yaw, gyr_bias_z;
+int imu_count = 0;
 bool imu_init = true;
 // float filt_alpha = 0.15;
 // float comp_alpha = 0.9;
 
 // TOF
 float tof1_dist, tof2_dist;
+float tof2_velocity;
+unsigned long tof2_time;
+int tof_count = 0;
 
 // Motor
 float left_motor_pct = 0.0f;
@@ -91,9 +102,11 @@ float right_motor_pct = 0.0f;
 
 // Controller
 bool active = false;
+bool sensor_updated = false;
 float kp = 1.0f;
 float ki = 0.0f;
 float kd = 0.0f;
+int pid_count = 0;
 
 unsigned long last_control_time = 0; // in microseconds
 float setpoint = 0.0f;               // Degree for IMU, cm for TOF
@@ -116,12 +129,19 @@ bool collecting = false;
 // System Buffers
 unsigned long time_buffer[SAMPLE_LEN];
 
+// Sensor Buffers
+float tof_1_buffer[SAMPLE_LEN];
+float tof_2_buffer[SAMPLE_LEN];
+float acc_x_buffer[SAMPLE_LEN];
+float acc_y_buffer[SAMPLE_LEN];
+float gyr_z_buffer[SAMPLE_LEN];
+float yaw_buffer[SAMPLE_LEN];
+
 // Motor Buffer
 float left_pct[SAMPLE_LEN];
 float right_pct[SAMPLE_LEN];
 
 // PID Buffer
-float sensor_buffer[SAMPLE_LEN];
 float error_buffer[SAMPLE_LEN];
 float derivative_buffer[SAMPLE_LEN];
 float integral_buffer[SAMPLE_LEN];
@@ -137,7 +157,9 @@ enum CommandTypes
     UPDATE_PID,
     SET_DURATION,
     SET_SETPOINT,
-    SET_MODE
+    SET_MODE,
+    SET_MOTOR_MAX,
+    SET_EXTRAPOLATION
 };
 //////////// Commands ////////////
 
@@ -148,6 +170,7 @@ enum ControlMode
     MODE_ORIENTATION
 };
 ControlMode control_mode = MODE_POSITION;
+bool extrapolation = true;
 //////////// Control Mode ////////////
 
 // =========================
@@ -170,11 +193,13 @@ void loop()
 {
     handleBLE();
     updateSensors();
-    if (active)
+    if (active && (sensor_updated || extrapolation))
     {
-        // runController();
+        runController();
+        pid_count++;
         if (millis() - start_sample_time >= SAMPLE_DURATION)
             stopRobot();
+        sensor_updated = false;
     }
     if (collecting)
         collectSamples();
@@ -247,6 +272,7 @@ void handleCommand()
 
         if (control_mode == MODE_POSITION)
         {
+            distanceSensor2.stopRanging();
             // distanceSensor1.startRanging();
             distanceSensor2.startRanging();
             Serial.println("Waiting for second ToF reading...");
@@ -256,6 +282,9 @@ void handleCommand()
             }
             tof2_dist = distanceSensor2.getDistance();
             distanceSensor2.clearInterrupt();
+            sensor_updated = true;
+            tof2_time = micros();
+            tof2_velocity = 0.0f;
         }
         else if (control_mode == MODE_ORIENTATION)
         {
@@ -265,6 +294,7 @@ void handleCommand()
                 delay(1);
             }
             updateIMU();
+            sensor_updated = true;
         }
 
         sample_count = 0;
@@ -297,19 +327,37 @@ void handleCommand()
             tx_estring_value.append(left_pct[i]);
             tx_estring_value.append("|RM: ");
             tx_estring_value.append(right_pct[i]);
-            tx_estring_value.append("|S: ");
-            tx_estring_value.append(sensor_buffer[i]);
             tx_estring_value.append("|E: ");
             tx_estring_value.append(error_buffer[i]);
             tx_estring_value.append("|I: ");
             tx_estring_value.append(integral_buffer[i]);
             tx_estring_value.append("|D: ");
             tx_estring_value.append(derivative_buffer[i]);
+            tx_estring_value.append("|AX: ");
+            tx_estring_value.append(acc_x_buffer[i]);
+            tx_estring_value.append("|AY: ");
+            tx_estring_value.append(acc_y_buffer[i]);
+            tx_estring_value.append("|GZ: ");
+            tx_estring_value.append(gyr_z_buffer[i]);
+            tx_estring_value.append("|YW: ");
+            tx_estring_value.append(yaw_buffer[i]);
+            tx_estring_value.append("|T1: ");
+            tx_estring_value.append(tof_1_buffer[i]);
+            tx_estring_value.append("|T2: ");
+            tx_estring_value.append(tof_2_buffer[i]);
             tx_characteristic_string.writeValue(tx_estring_value.c_str());
             delay(2);
         }
-        SERIAL_PORT.print("Sample Count: ");
-        SERIAL_PORT.println(sample_count);
+        tx_estring_value.clear();
+        tx_estring_value.append("Sample Count: ");
+        tx_estring_value.append(sample_count);
+        tx_estring_value.append("| ToF Count: ");
+        tx_estring_value.append(tof_count);
+        tx_estring_value.append("| IMU Count: ");
+        tx_estring_value.append(imu_count);
+        tx_estring_value.append("| PID Count: ");
+        tx_estring_value.append(pid_count);
+        tx_characteristic_string.writeValue(tx_estring_value.c_str());
         break;
     }
 
@@ -378,6 +426,30 @@ void handleCommand()
         break;
     }
 
+    case SET_MOTOR_MAX:
+    {
+        int new_max;
+        success = robot_cmd.get_next_value(new_max);
+        if (!success)
+            return;
+        MAX_MOTOR_PCT = constrain(new_max, 0, 100);
+        Serial.print("Set Max Motor Percent to: ");
+        Serial.println(MAX_MOTOR_PCT);
+        break;
+    }
+
+    case SET_EXTRAPOLATION:
+    {
+        int extrapolation_int;
+        success = robot_cmd.get_next_value(extrapolation_int);
+        if (!success)
+            return;
+        extrapolation = (extrapolation_int != 0);
+        Serial.print("Set Extrapolation to: ");
+        Serial.println(extrapolation ? "True" : "False");
+        break;
+    }
+
     default:
     {
         Serial.print("Invalid Command Type: ");
@@ -413,6 +485,12 @@ float getSensorValue()
 {
     if (control_mode == MODE_POSITION)
     {
+        if (extrapolation)
+        {
+            unsigned long current_time = micros();
+            float extrapolated_dist = tof2_dist + tof2_velocity * ((current_time - tof2_time) / 1.e6);
+            return extrapolated_dist;
+        }
         return tof2_dist;
     }
     else if (control_mode == MODE_ORIENTATION)
@@ -425,10 +503,10 @@ float getSensorValue()
 void applyOutput(float output)
 {
     float power = -output;
-    if (power > 100)
-        power = 100;
-    if (power < -100)
-        power = -100;
+    if (power > MAX_MOTOR_PCT)
+        power = MAX_MOTOR_PCT;
+    if (power < -MAX_MOTOR_PCT)
+        power = -MAX_MOTOR_PCT;
 
     if (control_mode == MODE_POSITION)
     {
@@ -458,6 +536,8 @@ void updateSensors()
     if (myICM.dataReady())
     {
         updateIMU();
+        if (control_mode == MODE_ORIENTATION)
+            sensor_updated = true;
     }
     // if (distanceSensor1.checkForDataReady()) {
     //     tof1_dist = distanceSensor1.getDistance();
@@ -466,8 +546,26 @@ void updateSensors()
 
     if (distanceSensor2.checkForDataReady())
     {
-        tof2_dist = distanceSensor2.getDistance();
-        distanceSensor2.clearInterrupt();
+        if (extrapolation)
+        {
+            unsigned long current_time = micros();
+            float new_dist = distanceSensor2.getDistance();
+            float dt = (current_time - tof2_time) / 1.e6;
+            if (dt > 0)
+                tof2_velocity = (new_dist - tof2_dist) / dt;
+
+            tof2_time = current_time;
+            tof2_dist = new_dist;
+            distanceSensor2.clearInterrupt();
+        }
+        else
+        {
+            tof2_dist = distanceSensor2.getDistance();
+            distanceSensor2.clearInterrupt();
+        }
+        tof_count++;
+        if (control_mode == MODE_POSITION)
+            sensor_updated = true;
     }
 }
 
@@ -477,15 +575,22 @@ void updateIMU()
     myICM.getAGMT();
     if (imu_init)
     {
+        acc_x = myICM.accX();
+        acc_y = myICM.accY();
+        gyr_z = myICM.gyrZ();
         gyr_yaw = 0.0f;
         imu_init = false;
     }
     else
     {
+        acc_x = myICM.accX();
+        acc_y = myICM.accY();
+        gyr_z = myICM.gyrZ();
         float dt = (current_imu_time - last_imu_time) / 1.e6;
-        gyr_yaw += (myICM.gyrZ() - gyr_bias_z) * dt;
+        gyr_yaw += (gyr_z - gyr_bias_z) * dt;
     }
     last_imu_time = current_imu_time;
+    imu_count++;
 
     // acc_roll = atan2(myICM.accY(), sqrt(myICM.accX()*myICM.accX() + myICM.accZ()*myICM.accZ())) * 180 / M_PI;
     // acc_pitch = atan2(myICM.accX(), sqrt(myICM.accY()*myICM.accY() + myICM.accZ()*myICM.accZ()))* 180 / M_PI;
@@ -517,59 +622,117 @@ void updateIMU()
 // =========================
 // Motors
 // =========================
-void setMotors(float leftPct, float rightPct)
+void setMotors(float left_percent, float right_percent)
 {
-    float leftPWM = 0;
-    float rightPWM = 0;
-    leftPct = constrain(leftPct, -100.0f, 100.0f);
-    rightPct = constrain(rightPct, -100.0f, 100.0f);
+    left_percent = constrain(left_percent, -100, 100);
+    right_percent = constrain(right_percent, -100, 100);
 
-    // 1. Process Left Motor
-    if (leftPct > 0)
+    int left_pwm = percentToPWM(left_percent, true);
+    int right_pwm = percentToPWM(right_percent, false);
+
+    // left motor
+    if (left_percent > 0)
     {
-        leftPWM = mapFloat(leftPct, 1, 100, FWD_LEFT_MIN, FWD_LEFT_MAX);
-        analogWrite(LEFT_MOTOR_IN1, (int)leftPWM);
+        analogWrite(LEFT_MOTOR_IN1, left_pwm);
         analogWrite(LEFT_MOTOR_IN2, 0);
     }
-    else if (leftPct < 0)
+    else if (left_percent < 0)
     {
-        leftPWM = mapFloat(abs(leftPct), 1, 100, REV_LEFT_MIN, REV_LEFT_MAX);
         analogWrite(LEFT_MOTOR_IN1, 0);
-        analogWrite(LEFT_MOTOR_IN2, (int)leftPWM);
+        analogWrite(LEFT_MOTOR_IN2, left_pwm);
     }
     else
     {
-        // 0% = Stop
         analogWrite(LEFT_MOTOR_IN1, 0);
         analogWrite(LEFT_MOTOR_IN2, 0);
     }
 
-    // 2. Process Right Motor
-    if (rightPct > 0)
+    // right motor
+    if (right_percent > 0)
     {
-        rightPWM = mapFloat(rightPct, 1, 100, FWD_RIGHT_MIN, FWD_RIGHT_MAX);
-        analogWrite(RIGHT_MOTOR_IN1, (int)rightPWM);
+        analogWrite(RIGHT_MOTOR_IN1, right_pwm);
         analogWrite(RIGHT_MOTOR_IN2, 0);
     }
-    else if (rightPct < 0)
+    else if (right_percent < 0)
     {
-        rightPWM = mapFloat(abs(rightPct), 1, 100, REV_RIGHT_MIN, REV_RIGHT_MAX);
         analogWrite(RIGHT_MOTOR_IN1, 0);
-        analogWrite(RIGHT_MOTOR_IN2, (int)rightPWM);
+        analogWrite(RIGHT_MOTOR_IN2, right_pwm);
     }
     else
     {
-        // 0% = Stop
         analogWrite(RIGHT_MOTOR_IN1, 0);
         analogWrite(RIGHT_MOTOR_IN2, 0);
     }
 }
 
-// void runForward(float pct){setMotors(pct, pct);}
-// void runBackward(float pct){setMotors(-pct, -pct);}
-// void stopMotors(){setMotors(0, 0);}
-// void turnLeft(float pct){setMotors(-pct, pct);}
-// void turnRight(float pct){setMotors(pct, -pct);}
+int percentToPWM(float percent, bool isLeft)
+{
+    percent = constrain(percent, -100, 100);
+    if (percent == 0.0)
+        return 0;
+
+    bool forward = (percent > 0);
+    float p = abs(percent) / 100.0f;
+
+    if (isLeft)
+    {
+        if (forward)
+        {
+            if (p <= 0.5)
+            {
+                float t = p / 0.5;
+                return FWD_LEFT_MIN + t * (FWD_LEFT_MED - FWD_LEFT_MIN);
+            }
+            else
+            {
+                float t = (p - 0.5) / 0.5;
+                return FWD_LEFT_MED + t * (FWD_LEFT_MAX - FWD_LEFT_MED);
+            }
+        }
+        else
+        {
+            if (p <= 0.5)
+            {
+                float t = p / 0.5;
+                return BWD_LEFT_MIN + t * (BWD_LEFT_MED - BWD_LEFT_MIN);
+            }
+            else
+            {
+                float t = (p - 0.5) / 0.5;
+                return BWD_LEFT_MED + t * (BWD_LEFT_MAX - BWD_LEFT_MED);
+            }
+        }
+    }
+    else
+    {
+        if (forward)
+        {
+            if (p <= 0.5)
+            {
+                float t = p / 0.5;
+                return FWD_RIGHT_MIN + t * (FWD_RIGHT_MED - FWD_RIGHT_MIN);
+            }
+            else
+            {
+                float t = (p - 0.5) / 0.5;
+                return FWD_RIGHT_MED + t * (FWD_RIGHT_MAX - FWD_RIGHT_MED);
+            }
+        }
+        else
+        {
+            if (p <= 0.5)
+            {
+                float t = p / 0.5;
+                return BWD_RIGHT_MIN + t * (BWD_RIGHT_MED - BWD_RIGHT_MIN);
+            }
+            else
+            {
+                float t = (p - 0.5) / 0.5;
+                return BWD_RIGHT_MED + t * (BWD_RIGHT_MAX - BWD_RIGHT_MED);
+            }
+        }
+    }
+}
 
 // =========================
 // Logging
@@ -593,12 +756,19 @@ void collectSamples()
     // System Buffers
     time_buffer[sample_count] = millis() - start_sample_time;
 
+    // Sensor Buffers
+    tof_1_buffer[sample_count] = tof1_dist;
+    tof_2_buffer[sample_count] = tof2_dist;
+    acc_x_buffer[sample_count] = acc_x;
+    acc_y_buffer[sample_count] = acc_y;
+    gyr_z_buffer[sample_count] = gyr_z;
+    yaw_buffer[sample_count] = gyr_yaw;
+
     // Motor Buffer
-    left_pct[sample_count] = left_motor_pct;
-    right_pct[sample_count] = right_motor_pct;
+    left_pct[sample_count] = percentToPWM(left_motor_pct, true);
+    right_pct[sample_count] = percentToPWM(right_motor_pct, false);
 
     // PID Buffer
-    sensor_buffer[sample_count] = getSensorValue();
     error_buffer[sample_count] = error_value;
     derivative_buffer[sample_count] = derivative_value;
     integral_buffer[sample_count] = integral_value;
@@ -613,7 +783,12 @@ void cleanLog()
         time_buffer[i] = 0;
         left_pct[i] = 0.0f;
         right_pct[i] = 0.0f;
-        sensor_buffer[i] = 0.0f;
+        acc_x_buffer[i] = 0.0f;
+        acc_y_buffer[i] = 0.0f;
+        gyr_z_buffer[i] = 0.0f;
+        yaw_buffer[i] = 0.0f;
+        tof_1_buffer[i] = 0.0f;
+        tof_2_buffer[i] = 0.0f;
         error_buffer[i] = 0.0f;
         derivative_buffer[i] = 0.0f;
         integral_buffer[i] = 0.0f;
@@ -624,12 +799,20 @@ void cleanState()
 {
     // IMU
     last_imu_time = 0; // in microseconds
+    acc_x = 0.0f;
+    acc_y = 0.0f;
+    gyr_z = 0.0f;
     gyr_yaw = 0.0f;
+    gyr_bias_z = 0.0f;
     imu_init = true;
+    imu_count = 0;
 
     // TOF
     tof1_dist = 0.0f;
     tof2_dist = 0.0f;
+    tof_count = 0;
+    tof2_velocity = 0.0f;
+    tof2_time = 0;
 
     // Motors
     setMotors(0, 0);
@@ -637,12 +820,21 @@ void cleanState()
     right_motor_pct = 0.0f;
 
     // Controller
+    active = false;
+    sensor_updated = false;
     last_control_time = 0;
     sensor_value = 0.0f;
     error_value = 0.0f;
     integral_value = 0.0f;
     derivative_value = 0.0f;
     output_value = 0.0f;
+    pid_count = 0;
+
+    // Sample
+    sample_count = 0;
+    collecting = false;
+    last_sample_time = 0;
+    start_sample_time = 0;
 }
 
 // =========================

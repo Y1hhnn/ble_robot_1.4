@@ -577,3 +577,107 @@
 2026-03-19 00:12:10,186 | MainThread   | [INFO    ] | _get_ble_device     |: Found 1 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
 2026-03-19 00:12:10,189 | MainThread   | [INFO    ] | _get_ble_device     |: Selecting device: F32F03E1-EF13-6043-59E7-D2AE8E670FC2 (name: Artemis BLE)
 2026-03-19 00:12:11,461 | MainThread   | [INFO    ] | _connect            |: Connected to c0:42:0c:78:b8:49
+2026-03-21 02:19:00,669 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 02:19:00,670 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:19:10,724 | MainThread   | [INFO    ] | _get_ble_device     |: Found 0 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:19:17,285 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 02:19:17,286 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:19:27,334 | MainThread   | [INFO    ] | _get_ble_device     |: Found 0 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:21:21,553 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 02:21:21,553 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:21:31,606 | MainThread   | [INFO    ] | _get_ble_device     |: Found 1 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:21:31,608 | MainThread   | [INFO    ] | _get_ble_device     |: Selecting device: F32F03E1-EF13-6043-59E7-D2AE8E670FC2 (name: Artemis BLE)
+2026-03-21 02:21:32,467 | MainThread   | [INFO    ] | _connect            |: Connected to c0:42:0c:78:b8:49
+2026-03-21 02:25:14,804 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 02:25:14,805 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:25:24,849 | MainThread   | [INFO    ] | _get_ble_device     |: Found 1 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:25:24,850 | MainThread   | [INFO    ] | _get_ble_device     |: Selecting device: F32F03E1-EF13-6043-59E7-D2AE8E670FC2 (name: Artemis BLE)
+2026-03-21 02:25:26,342 | MainThread   | [INFO    ] | _connect            |: Connected to c0:42:0c:78:b8:49
+2026-03-21 02:28:42,478 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 02:28:42,479 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:28:52,528 | MainThread   | [INFO    ] | _get_ble_device     |: Found 1 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:28:52,529 | MainThread   | [INFO    ] | _get_ble_device     |: Selecting device: F32F03E1-EF13-6043-59E7-D2AE8E670FC2 (name: Artemis BLE)
+2026-03-21 02:28:53,371 | MainThread   | [INFO    ] | _connect            |: Connected to c0:42:0c:78:b8:49
+2026-03-21 02:29:23,972 | MainThread   | [INFO    ] | _connect            |: Already connected to a BLE device
+2026-03-21 02:30:43,836 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 02:30:43,837 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:30:53,881 | MainThread   | [INFO    ] | _get_ble_device     |: Found 1 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:30:53,883 | MainThread   | [INFO    ] | _get_ble_device     |: Selecting device: F32F03E1-EF13-6043-59E7-D2AE8E670FC2 (name: Artemis BLE)
+2026-03-21 02:30:54,723 | MainThread   | [INFO    ] | _connect            |: Connected to c0:42:0c:78:b8:49
+2026-03-21 02:33:41,085 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 02:33:41,086 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:33:51,133 | MainThread   | [INFO    ] | _get_ble_device     |: Found 1 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:33:51,133 | MainThread   | [INFO    ] | _get_ble_device     |: Selecting device: F32F03E1-EF13-6043-59E7-D2AE8E670FC2 (name: Artemis BLE)
+2026-03-21 02:33:51,958 | MainThread   | [INFO    ] | _connect            |: Connected to c0:42:0c:78:b8:49
+2026-03-21 02:36:21,269 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 02:36:21,269 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:36:31,319 | MainThread   | [INFO    ] | _get_ble_device     |: Found 1 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 02:36:31,320 | MainThread   | [INFO    ] | _get_ble_device     |: Selecting device: F32F03E1-EF13-6043-59E7-D2AE8E670FC2 (name: Artemis BLE)
+2026-03-21 02:36:32,216 | MainThread   | [INFO    ] | _connect            |: Connected to c0:42:0c:78:b8:49
+2026-03-21 03:10:20,378 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:10:20,379 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:10:30,418 | MainThread   | [INFO    ] | _get_ble_device     |: Found 1 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:10:30,419 | MainThread   | [INFO    ] | _get_ble_device     |: Selecting device: F32F03E1-EF13-6043-59E7-D2AE8E670FC2 (name: Artemis BLE)
+2026-03-21 03:10:31,743 | MainThread   | [INFO    ] | _connect            |: Connected to c0:42:0c:78:b8:49
+2026-03-21 03:19:03,365 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:19:03,366 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:19:13,410 | MainThread   | [INFO    ] | _get_ble_device     |: Found 0 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:40:41,751 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:40:41,752 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:40:51,801 | MainThread   | [INFO    ] | _get_ble_device     |: Found 1 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:40:51,802 | MainThread   | [INFO    ] | _get_ble_device     |: Selecting device: F32F03E1-EF13-6043-59E7-D2AE8E670FC2 (name: Artemis BLE)
+2026-03-21 03:40:52,666 | MainThread   | [INFO    ] | _connect            |: Connected to c0:42:0c:78:b8:49
+2026-03-21 03:43:44,722 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:43:44,723 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:43:54,771 | MainThread   | [INFO    ] | _get_ble_device     |: Found 1 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:43:54,774 | MainThread   | [INFO    ] | _get_ble_device     |: Selecting device: F32F03E1-EF13-6043-59E7-D2AE8E670FC2 (name: Artemis BLE)
+2026-03-21 03:43:55,682 | MainThread   | [INFO    ] | _connect            |: Connected to c0:42:0c:78:b8:49
+2026-03-21 03:44:44,642 | MainThread   | [INFO    ] | _connect            |: Already connected to a BLE device
+2026-03-21 03:45:16,994 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:45:16,994 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:45:27,043 | MainThread   | [INFO    ] | _get_ble_device     |: Found 1 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:45:27,046 | MainThread   | [INFO    ] | _get_ble_device     |: Selecting device: F32F03E1-EF13-6043-59E7-D2AE8E670FC2 (name: Artemis BLE)
+2026-03-21 03:45:28,442 | MainThread   | [INFO    ] | _connect            |: Connected to c0:42:0c:78:b8:49
+2026-03-21 03:47:37,761 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:47:37,762 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:47:39,126 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:47:39,130 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:47:49,181 | MainThread   | [INFO    ] | _get_ble_device     |: Found 1 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:47:49,182 | MainThread   | [INFO    ] | _get_ble_device     |: Selecting device: F32F03E1-EF13-6043-59E7-D2AE8E670FC2 (name: Artemis BLE)
+2026-03-21 03:47:52,466 | MainThread   | [ERROR   ] | _connect            |: disconnected
+2026-03-21 03:47:53,474 | MainThread   | [WARNING ] | connect             |: Attempting to connect again...
+2026-03-21 03:47:53,476 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:47:53,477 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:48:03,533 | MainThread   | [INFO    ] | _get_ble_device     |: Found 1 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:48:03,533 | MainThread   | [INFO    ] | _get_ble_device     |: Selecting device: F32F03E1-EF13-6043-59E7-D2AE8E670FC2 (name: Artemis BLE)
+2026-03-21 03:48:07,689 | MainThread   | [INFO    ] | _connect            |: Connected to c0:42:0c:78:b8:49
+2026-03-21 03:49:53,109 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:49:53,110 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:50:03,161 | MainThread   | [INFO    ] | _get_ble_device     |: Found 0 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:50:14,868 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:50:14,868 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:50:24,918 | MainThread   | [INFO    ] | _get_ble_device     |: Found 0 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:50:27,129 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:50:27,129 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:50:37,174 | MainThread   | [INFO    ] | _get_ble_device     |: Found 0 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:51:05,278 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:51:05,279 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:51:15,328 | MainThread   | [INFO    ] | _get_ble_device     |: Found 1 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:51:15,328 | MainThread   | [INFO    ] | _get_ble_device     |: Selecting device: F32F03E1-EF13-6043-59E7-D2AE8E670FC2 (name: Artemis BLE)
+2026-03-21 03:51:21,040 | MainThread   | [INFO    ] | _connect            |: Connected to c0:42:0c:78:b8:49
+2026-03-21 03:52:47,695 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:52:47,696 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:52:57,742 | MainThread   | [INFO    ] | _get_ble_device     |: Found 0 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:53:02,069 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:53:02,069 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:53:12,117 | MainThread   | [INFO    ] | _get_ble_device     |: Found 0 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:53:36,184 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:53:36,185 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:53:46,234 | MainThread   | [INFO    ] | _get_ble_device     |: Found 0 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:54:36,721 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:54:36,722 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:54:37,709 | MainThread   | [INFO    ] | _connect            |: Looking for Artemis Nano Peripheral Device: c0:42:0c:78:b8:49
+2026-03-21 03:54:37,709 | MainThread   | [INFO    ] | _get_ble_device     |: Scanning for device with address: c0:42:0c:78:b8:49, service UUID: d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:54:47,758 | MainThread   | [INFO    ] | _get_ble_device     |: Found 1 device(s) advertising service d427e7cc-c400-4597-b417-d564e20d6600
+2026-03-21 03:54:47,759 | MainThread   | [INFO    ] | _get_ble_device     |: Selecting device: F32F03E1-EF13-6043-59E7-D2AE8E670FC2 (name: Artemis BLE)
+2026-03-21 03:54:55,395 | MainThread   | [INFO    ] | _connect            |: Connected to c0:42:0c:78:b8:49
